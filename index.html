@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>socket io chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="m-0 pb-12">
+    <div id="messages" class="flex flex-col px-4 pb-4"></div>
+    <form id="form" class="fixed bottom-0 right-0 left-0 flex items-center box-border p-2 h-12 bg-teal-300" action="">
+      <input id="name" class="m-1 px-2 py-1 w-24 rounded border-0 focus:outline-none bg-white" placeholder="請填寫名字">
+      <input id="input" class="flex-1 m-1 px-2 py-1 rounded border-0 focus:outline-none bg-white" autocomplete="off">
+      <button class="px-1 py-1 w-8 rounded border-0 outline-none bg-teal-900 text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+        </svg>
+      </button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      let counter = 0;
+
+      const socket = io({
+        ackTimeout: 10000,
+        retries: 3,
+        auth: {
+          serverOffset: 0
+        }
+      });
+
+      const form = document.getElementById('form');
+      const name = document.getElementById('name');
+      const input = document.getElementById('input');
+      const messages = document.getElementById('messages');
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!name.value) {
+          alert('未填寫名字');
+          return;
+        }
+
+        if (input.value) {
+          const clientOffset = `${socket.id}-${counter++}`;
+          socket.emit('message', name.value + ': ' + input.value, clientOffset);
+          const item = document.createElement('div');
+          item.classList.add('self-end', 'mt-4', 'p-4', 'rounded', 'bg-gray-200', 'text-gray-700');
+          item.textContent = input.value;
+          messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+          input.value = '';
+          input.scrollIntoView();
+          input.focus();
+        }
+      });
+
+      name.addEventListener('blur', (e) => {
+        if (name.value) {
+          socket.emit('login', name.value);
+        }
+      });
+
+      socket.on('broadcast', (msg, serverOffset, clientOffset) => {
+        if (clientOffset !== socket.id + '-' + (counter - 1)) {
+          const item = document.createElement('div');
+          item.classList.add('self-start', 'mt-4', 'p-4', 'rounded', 'bg-teal-100', 'text-teal-900');
+          item.textContent = msg;
+          messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+        socket.auth.serverOffset = serverOffset;
+      });
+    </script>
+  </body>
+</html>
